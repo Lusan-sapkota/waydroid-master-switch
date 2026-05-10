@@ -49,44 +49,35 @@ cd waydroid-master-switch
 bash install.sh
 ```
 
-### 3. Restart GNOME Shell
+The script will attempt to refresh GNOME and enable the extension automatically. **If it succeeds, you are done!**
 
-GNOME Shell must be restarted or refreshed before it will recognize the new extension files:
+---
 
-- **Quick Refresh (May not work on all systems)**:
-  ```bash
-  dbus-send --type=method_call --dest=org.gnome.Shell /org/gnome/Shell org.gnome.Shell.Extensions.InstallRemoteExtension string 'dummy'
-  ```
-- **Wayland (Full Restart)**: Log out and log back in.
+### Manual Setup (If script fails)
+
+If the extension doesn't appear after running the script, follow these manual steps:
+
+**3. Restart GNOME Shell / Logout**
+- **Wayland (Ubuntu default)**: Log out and log back in.
 - **X11**: Press Alt+F2, type 'r', and press Enter.
 
-### 4. Enable the extension
-
-The `install.sh` script will attempt to enable the extension automatically. If it's a first-time install, GNOME may not recognize it until you logout/restart (Step 3). After logging back in, you can enable it manually if the script couldn't:
-
+**4. Enable the extension**
 ```bash
 gnome-extensions enable waydroid-master-switch@lusan
 ```
 
-Verify:
-
+**Verify:**
 ```bash
 gnome-extensions list | grep waydroid-master-switch
 ```
 
 ## Uninstall
 
-To remove the extension, disable it first and then remove the files:
+To remove the extension completely, run:
 
 ```bash
-# Disable the extension
-gnome-extensions disable waydroid-master-switch@lusan
-
-# Remove the files
-rm -rf ~/.local/share/gnome-shell/extensions/waydroid-master-switch@lusan
+bash uninstall.sh
 ```
-
-Restart GNOME Shell (Log out and back in on Wayland) to complete the removal.
 
 ## Usage
 
