@@ -125,33 +125,11 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
       this._log(`Action skipped (busy): ${description}`);
       return;
     }
-    // Provide progress feedback if the action is waiting (e.g. for polkit auth)
-    let progressTimer = 0;
-    const startProgress = () => {
-      if (progressTimer) return;
-      progressTimer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 20, () => {
-        try {
-          this._notifyInfo('Action in progress — a password prompt may appear.');
-          this._log(`Action progress: ${description} (waiting)`);
-        } catch (e) {
-          log(e);
-        }
-        return GLib.SOURCE_CONTINUE;
-      });
-    };
-    const stopProgress = () => {
-      if (progressTimer) {
-        GLib.Source.remove(progressTimer);
-        progressTimer = 0;
-      }
-    };
-
     try {
       this._setBusy(true);
       this._log(`Action requested: ${description}`);
-      startProgress();
+      this._notifyInfo(`Running ${description}...`);
       const result = await actionFn();
-      stopProgress();
       if (result) {
         this._notifyInfo(result);
         this._log(`Action completed: ${description} -> ${result}`);
@@ -159,12 +137,10 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
         this._log(`Action completed: ${description}`);
       }
     } catch (error) {
-      stopProgress();
       this._notifyError(description, error);
       this._log(`Action failed: ${description} -> ${error?.message ?? error}`);
     } finally {
       this._setBusy(false);
-      stopProgress();
       this._syncState().catch(error => {
         this._log(`State sync failed: ${error?.message ?? error}`);
       });
