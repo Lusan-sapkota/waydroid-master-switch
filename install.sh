@@ -13,6 +13,22 @@ echo "------------------------------------------"
 # Ensure the extensions directory exists
 mkdir -p "$HOME/.local/share/gnome-shell/extensions"
 
+# Check if we are in a git repository and switch to the latest tag
+if [ -d ".git" ]; then
+    echo "Updating local repository and checking for latest stable release..."
+    git fetch --tags --quiet
+    # Find the latest tag
+    LATEST_TAG=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null)
+    
+    if [ -n "$LATEST_TAG" ]; then
+        echo "Switching to latest stable version: $LATEST_TAG"
+        git checkout "$LATEST_TAG" --quiet
+    else
+        echo "No tags found. Using the current branch (pulling latest)..."
+        git pull --quiet
+    fi
+fi
+
 # Check if we are in the correct directory (has extension.js)
 if [ ! -f "extension.js" ]; then
     echo "Error: Please run this script from inside the waydroid-master-switch directory."
@@ -32,8 +48,7 @@ if [ -d "$DEST_DIR" ]; then
     echo "Existing installation found at $DEST_DIR"
     
     if [ -L "$DEST_DIR" ]; then
-        echo "Detected Symlink installation. Updating source via git pull..."
-        git pull
+        echo "Detected Symlink installation. Source is already updated."
     else
         echo "Updating standalone installation (copying files)..."
         cp -rf . "$DEST_DIR/"

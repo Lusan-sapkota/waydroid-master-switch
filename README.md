@@ -56,7 +56,7 @@ cd waydroid-master-switch
 bash install.sh
 ```
 
-The script will attempt to refresh GNOME and enable the extension automatically. **If it succeeds, you are done!**
+The script will automatically checkout the latest stable release (tag) and attempt to refresh GNOME and enable the extension. **If it succeeds, you are done!**
 
 ---
 
