@@ -93,7 +93,7 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
       this._runAction(() => this._killAll(), 'kill all');
     });
 
-    this.connect('toggled', () => {
+    this.connect('notify::checked', () => {
       if (this._suppressToggle) {
         return;
       }
