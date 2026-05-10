@@ -128,11 +128,13 @@ Open Quick Settings and look for the Waydroid tile (Android icon). The tile show
 
 **What it does**: Configures Android to emulate a phone display (larger resolution, higher DPI for scaling).
 
+> **✨ Smart Auto-Adjust**: If your laptop screen height is shorter than the requested Phone Mode height (e.g., on a 1080p display), the extension will automatically scale down the width, height, and DPI to perfectly fit your screen without clipping or overflowing!
+
 **Flow**:
 1. Set Android system properties:
-   - `persist.waydroid.width`: 720
-   - `persist.waydroid.height`: 1280
-   - `persist.waydroid.dpi`: 320
+   - `persist.waydroid.width`: 720 (scaled if needed)
+   - `persist.waydroid.height`: 1280 (scaled if needed)
+   - `persist.waydroid.dpi`: 320 (scaled if needed)
 2. Verify properties were actually set; fail if verification fails.
 3. **If session is running (mid-flight mode change)**:
    - Stop the session.
@@ -154,9 +156,15 @@ Open Quick Settings and look for the Waydroid tile (Android icon). The tile show
 
 **What it does**: Configures Android to emulate a tablet display (wide resolution, lower DPI).
 
-**Flow**: Same as Phone Mode, but with tablet values (1280x800@240).
+**Flow**: Same as Phone Mode, but with tablet values (1280x800@240). Auto-adjust is also applied here if the screen is too small.
 
 **When to use**: Want tablet-sized Android UI; testing tablet apps.
+
+#### Toggle Window Always on Top
+
+**What it does**: Finds the Waydroid window on your current workspace and forces it to stay above all other windows. Clicking it again removes the always-on-top state.
+
+**When to use**: When you want to keep the Android UI floating over your browser or text editor while you work.
 
 #### Start/Stop System Container
 

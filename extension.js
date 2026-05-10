@@ -100,6 +100,11 @@ const WaydroidToggle = GObject.registerClass(
       });
       this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
+      this.menu.addAction('Toggle Window Always on Top', () => {
+        this._runAction(() => this._toggleAlwaysOnTop(), 'toggle always on top');
+      });
+      this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
       this.menu.addAction('Start System Container', () => {
         this._runAction(() => this._startSystemContainer(), 'start system container');
       });
@@ -350,9 +355,24 @@ const WaydroidToggle = GObject.registerClass(
     }
 
     async _applyMode(modeName) {
-      const mode = MODE_PROFILES[modeName];
-      if (!mode) {
+      const baseMode = MODE_PROFILES[modeName];
+      if (!baseMode) {
         throw new Error(`Unknown mode: ${modeName}`);
+      }
+
+      const mode = { ...baseMode };
+
+      const monitor = Main.layoutManager.primaryMonitor;
+      if (monitor) {
+        const padding = 120; // Space for GNOME top bar and dock
+        const maxAllowedHeight = monitor.height - padding;
+        if (mode.height > maxAllowedHeight) {
+          const scale = maxAllowedHeight / mode.height;
+          mode.height = Math.round(mode.height * scale);
+          mode.width = Math.round(mode.width * scale);
+          mode.dpi = Math.round(mode.dpi * scale);
+          this._log(`Auto-adjusted ${modeName} to fit screen: ${mode.width}x${mode.height}@${mode.dpi}`);
+        }
       }
 
       const wasSessionRunning = await this._isSessionRunning();
@@ -446,6 +466,27 @@ const WaydroidToggle = GObject.registerClass(
         { shell: true }
       );
       return 'Stopped Waydroid session and system container';
+    }
+
+    async _toggleAlwaysOnTop() {
+      const workspace = global.workspace_manager.get_active_workspace();
+      const windows = workspace.list_windows();
+      const waydroidWindow = windows.find(w => {
+        const wmClass = w.get_wm_class();
+        return wmClass && wmClass.toLowerCase().includes('waydroid');
+      });
+
+      if (!waydroidWindow) {
+        throw new Error('Waydroid window not found on current workspace');
+      }
+
+      if (waydroidWindow.is_above()) {
+        waydroidWindow.unmake_above();
+        return 'Removed Always on Top';
+      } else {
+        waydroidWindow.make_above();
+        return 'Set Always on Top';
+      }
     }
 
     async _syncState() {
