@@ -51,12 +51,18 @@ bash install.sh
 
 ### 3. Restart GNOME Shell
 
-GNOME Shell must be restarted before it will recognize the new extension files:
+GNOME Shell must be restarted or refreshed before it will recognize the new extension files:
 
-- **Wayland (Ubuntu default)**: Log out and log back in.
+- **Quick Refresh (May not work on all systems)**:
+  ```bash
+  dbus-send --type=method_call --dest=org.gnome.Shell /org/gnome/Shell org.gnome.Shell.Extensions.InstallRemoteExtension string 'dummy'
+  ```
+- **Wayland (Full Restart)**: Log out and log back in.
 - **X11**: Press Alt+F2, type 'r', and press Enter.
 
 ### 4. Enable the extension
+
+The `install.sh` script will attempt to enable the extension automatically. If it's a first-time install, GNOME may not recognize it until you logout/restart (Step 3). After logging back in, you can enable it manually if the script couldn't:
 
 ```bash
 gnome-extensions enable waydroid-master-switch@lusan

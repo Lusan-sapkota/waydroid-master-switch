@@ -34,18 +34,34 @@ else
     cp -rf . "$DEST_DIR/"
 fi
 
+# Try to trigger a refresh of the extensions list (best effort)
+if command -v dbus-send >/dev/null; then
+    echo "Attempting to refresh GNOME extensions list via D-Bus..."
+    dbus-send --type=method_call --dest=org.gnome.Shell /org/gnome/Shell org.gnome.Shell.Extensions.InstallRemoteExtension string 'dummy' >/dev/null 2>&1
+    
+    # Wait a moment for GNOME to process the refresh
+    sleep 1
+    
+    echo "Attempting to enable extension..."
+    if gnome-extensions enable "$EXT_ID" 2>/dev/null; then
+        echo "Extension enabled successfully!"
+    else
+        echo "Note: Extension could not be enabled automatically yet (this is normal if GNOME needs a logout/restart, please follow the instructions below)."
+    fi
+fi
+
 echo "------------------------------------------"
-echo "SUCCESS: Extension files are in place."
+echo "SUCCESS: Extension setup completed."
 echo "------------------------------------------"
 echo ""
-echo "IMPORTANT: GNOME Shell must be restarted to recognize new extensions."
+echo "IF THE EXTENSION IS NOT SHOWING in Quick Settings:"
 echo ""
-echo "1. Restart GNOME Shell:"
+echo "1. Restart GNOME Shell / Logout (Required for first-time installs):"
 echo "   - Wayland (Ubuntu default): Log out and log back in."
 echo "   - X11: Press Alt+F2, type 'r', and press Enter."
 echo ""
-echo "2. Enable the extension:"
+echo "2. Enable manually (if not already enabled):"
 echo "   gnome-extensions enable $EXT_ID"
 echo ""
-echo "3. Open Quick Settings to find the Waydroid tile."
+echo "3. Look for the Android icon in your Quick Settings menu."
 echo "------------------------------------------"
