@@ -60,24 +60,10 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
     this.menu.addAction('Start All (Container + Session)', () => {
       this._runAction(() => this._startAll(), 'start all');
     });
-    this.menu.addAction('Stop All (Session + Container)', () => {
-      this._runAction(() => this._stopAll(), 'stop all');
-    });
-    this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
-    this.menu.addAction('Start System Container', () => {
-      this._runAction(() => this._startSystemContainer(), 'start system container');
-    });
-    this.menu.addAction('Stop System Container', () => {
-      this._runAction(() => this._stopSystemContainer(), 'stop system container');
-    });
     this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
     this.menu.addAction('Start Session', () => {
       this._runAction(() => this._startSession(), 'start session');
-    });
-    this.menu.addAction('Stop Session', () => {
-      this._runAction(() => this._stopSession(), 'stop session');
     });
     this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
@@ -86,6 +72,20 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
     });
     this.menu.addAction('Tablet Mode (1280x800 @240)', () => {
       this._runAction(() => this._applyMode('tablet'), 'apply tablet mode');
+    });
+    this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+    this.menu.addAction('Start System Container', () => {
+      this._runAction(() => this._startSystemContainer(), 'start system container');
+    });
+    this.menu.addAction('Stop Session', () => {
+      this._runAction(() => this._stopSession(), 'stop session');
+    });
+    this.menu.addAction('Stop System Container', () => {
+      this._runAction(() => this._stopSystemContainer(), 'stop system container');
+    });
+    this.menu.addAction('Stop All (Session + Container)', () => {
+      this._runAction(() => this._stopAll(), 'stop all');
     });
     this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
@@ -126,7 +126,10 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
     }
     this._setBusy(true);
     try {
-      await actionFn();
+      const result = await actionFn();
+      if (result) {
+        this._notifyInfo(result);
+      }
     } catch (error) {
       this._notifyError(description, error);
     } finally {
@@ -149,49 +152,57 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
   }
 
   async _startAll() {
-    await this._startSystemContainer();
-    await this._startSession();
+    const parts = [];
+    parts.push(await this._startSystemContainer());
+    parts.push(await this._startSession());
+    return parts.filter(Boolean).join('; ');
   }
 
   async _stopAll() {
-    await this._stopSession();
-    await this._stopSystemContainer();
+    const parts = [];
+    parts.push(await this._stopSession());
+    parts.push(await this._stopSystemContainer());
+    return parts.filter(Boolean).join('; ');
   }
 
   async _startSystemContainer() {
     const active = await this._isContainerActive();
     if (active) {
-      return;
+      return 'Waydroid system container is already running';
     }
     await this._runCommand(['pkexec', 'systemctl', 'start', 'waydroid-container']);
+    return 'Started Waydroid system container';
   }
 
   async _stopSystemContainer() {
     const active = await this._isContainerActive();
     if (!active) {
-      return;
+      return 'Waydroid system container is already stopped';
     }
     await this._runCommand(['pkexec', 'systemctl', 'stop', 'waydroid-container']);
+    return 'Stopped Waydroid system container';
   }
 
   async _startSession() {
     const sessionRunning = await this._isSessionRunning();
     if (sessionRunning) {
-      return;
+      return 'Waydroid session is already running';
     }
     const containerActive = await this._isContainerActive();
     if (!containerActive) {
       throw new Error('System container is inactive. Start it first.');
     }
     await this._runCommand(['waydroid', 'session', 'start']);
+    return 'Started Waydroid session';
   }
 
   async _stopSession() {
     const sessionRunning = await this._isSessionRunning();
     if (!sessionRunning) {
-      return;
+      return 'Waydroid session is already stopped';
     }
     await this._runCommand(['waydroid', 'session', 'stop']);
+    return 'Stopped Waydroid session';
   }
 
   async _applyMode(modeName) {
@@ -209,6 +220,7 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
       await this._stopSession();
       await this._startSession();
     }
+    return 'Applied selected mode';
   }
 
   async _killAll() {
@@ -216,6 +228,7 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
       'waydroid session stop && pkexec systemctl stop waydroid-container',
       { shell: true }
     );
+    return 'Stopped Waydroid session and system container';
   }
 
   async _syncState() {
@@ -274,6 +287,10 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
   _notifyError(action, error) {
     const message = error && error.message ? error.message : `${error}`;
     Main.notify('Waydroid Master Switch', `Failed to ${action}: ${message}`);
+  }
+
+  _notifyInfo(message) {
+    Main.notify('Waydroid Master Switch', message);
   }
 }
 );
