@@ -125,10 +125,33 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
       this._log(`Action skipped (busy): ${description}`);
       return;
     }
+    // Provide progress feedback if the action is waiting (e.g. for polkit auth)
+    let progressTimer = 0;
+    const startProgress = () => {
+      if (progressTimer) return;
+      progressTimer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 20, () => {
+        try {
+          this._notifyInfo('Action in progress — a password prompt may appear.');
+          this._log(`Action progress: ${description} (waiting)`);
+        } catch (e) {
+          log(e);
+        }
+        return GLib.SOURCE_CONTINUE;
+      });
+    };
+    const stopProgress = () => {
+      if (progressTimer) {
+        GLib.Source.remove(progressTimer);
+        progressTimer = 0;
+      }
+    };
+
     try {
       this._setBusy(true);
       this._log(`Action requested: ${description}`);
+      startProgress();
       const result = await actionFn();
+      stopProgress();
       if (result) {
         this._notifyInfo(result);
         this._log(`Action completed: ${description} -> ${result}`);
@@ -136,10 +159,12 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
         this._log(`Action completed: ${description}`);
       }
     } catch (error) {
+      stopProgress();
       this._notifyError(description, error);
       this._log(`Action failed: ${description} -> ${error?.message ?? error}`);
     } finally {
       this._setBusy(false);
+      stopProgress();
       this._syncState().catch(error => {
         this._log(`State sync failed: ${error?.message ?? error}`);
       });
@@ -188,6 +213,8 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
     if (active) {
       return 'Waydroid system container is already running';
     }
+    this._log('Invoking pkexec to start system container');
+    this._notifyInfo('Requesting authentication to start Waydroid container');
     await this._runCommand(['pkexec', 'systemctl', 'start', 'waydroid-container']);
     return 'Started Waydroid system container';
   }
@@ -197,6 +224,8 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
     if (!active) {
       return 'Waydroid system container is already stopped';
     }
+    this._log('Invoking pkexec to stop system container');
+    this._notifyInfo('Requesting authentication to stop Waydroid container');
     await this._runCommand(['pkexec', 'systemctl', 'stop', 'waydroid-container']);
     return 'Stopped Waydroid system container';
   }
@@ -242,6 +271,8 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
   }
 
   async _killAll() {
+    this._log('Executing Kill All (session stop + pkexec stop container)');
+    this._notifyInfo('Killing Waydroid session and requesting authentication to stop container');
     await this._runCommand(
       'waydroid session stop && pkexec systemctl stop waydroid-container',
       { shell: true }
