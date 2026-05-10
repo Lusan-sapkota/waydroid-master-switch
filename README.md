@@ -33,6 +33,9 @@ This extension manages both:
 
 ## Install & Update
 
+> [!IMPORTANT]
+> You can clone this repository anywhere you like, but you **must** be inside the project folder (`cd waydroid-master-switch`) when running the scripts.
+
 The easiest way to install or update the extension is using the provided `install.sh` script.
 
 ### 1. Clone or Pull the latest code
@@ -73,7 +76,7 @@ gnome-extensions list | grep waydroid-master-switch
 
 ## Uninstall
 
-To remove the extension completely, run:
+Make sure you are inside the repository folder, then run:
 
 ```bash
 bash uninstall.sh
