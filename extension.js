@@ -171,8 +171,6 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
   }
 
   _setBusy(isBusy) {
-    // Keep _busy state internally, but do not disable menu interactivity.
-    // Disabling the menu caused the UI to feel hung while polkit waited.
     this._busy = isBusy;
   }
 
@@ -187,7 +185,31 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
   async _startAll() {
     const parts = [];
     parts.push(await this._startSystemContainer());
-    parts.push(await this._startSession());
+
+    const sessionRunning = await this._isSessionRunning();
+    if (sessionRunning) {
+      parts.push('Waydroid session is already running');
+      return parts.filter(Boolean).join('; ');
+    }
+
+    try {
+      parts.push(await this._startSession());
+    } catch (error) {
+      this._log(`Session start attempt 1 failed: ${error?.message ?? error}`);
+      await new Promise(r => GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 2, () => { r(); return GLib.SOURCE_REMOVE; }));
+      try {
+        parts.push(await this._startSession());
+      } catch (retryError) {
+        this._log(`Session start attempt 2 failed: ${retryError?.message ?? retryError}`);
+        const runningAfterRetry = await this._isSessionRunning();
+        if (runningAfterRetry) {
+          parts.push('Waydroid session is running');
+        } else {
+          parts.push(`Session start pending: ${retryError?.message ?? retryError}`);
+        }
+      }
+    }
+
     return parts.filter(Boolean).join('; ');
   }
 
