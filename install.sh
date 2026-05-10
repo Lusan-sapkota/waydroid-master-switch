@@ -45,23 +45,32 @@ if command -v dbus-send >/dev/null; then
     echo "Attempting to enable extension..."
     if gnome-extensions enable "$EXT_ID" 2>/dev/null; then
         echo "Extension enabled successfully!"
+        AUTO_ENABLED=true
     else
-        echo "Note: Extension could not be enabled automatically yet (this is normal if GNOME needs a logout/restart, please follow the instructions below)."
+        echo "Note: Extension could not be enabled automatically yet (this is normal if GNOME needs a logout/restart)."
+        AUTO_ENABLED=false
     fi
 fi
 
 echo "------------------------------------------"
 echo "SUCCESS: Extension setup completed."
 echo "------------------------------------------"
-echo ""
-echo "IF THE EXTENSION IS NOT SHOWING in Quick Settings:"
-echo ""
-echo "1. Restart GNOME Shell / Logout (Required for first-time installs):"
-echo "   - Wayland (Ubuntu default): Log out and log back in."
-echo "   - X11: Press Alt+F2, type 'r', and press Enter."
-echo ""
-echo "2. Enable manually (if not already enabled):"
-echo "   gnome-extensions enable $EXT_ID"
-echo ""
-echo "3. Look for the Android icon in your Quick Settings menu."
-echo "------------------------------------------"
+
+if [ "$AUTO_ENABLED" = false ]; then
+    echo ""
+    echo "IF THE EXTENSION IS NOT SHOWING in Quick Settings:"
+    echo ""
+    echo "1. Restart GNOME Shell / Logout (Required for first-time installs):"
+    echo "   - Wayland (Ubuntu default): Log out and log back in."
+    echo "   - X11: Press Alt+F2, type 'r', and press Enter."
+    echo ""
+    echo "2. Enable manually (if not already enabled):"
+    echo "   gnome-extensions enable $EXT_ID"
+    echo ""
+    echo "3. Look for the Android icon in your Quick Settings menu."
+    echo "------------------------------------------"
+else
+    echo ""
+    echo "The extension is now active! Look for the Android icon in your Quick Settings."
+    echo "------------------------------------------"
+fi
