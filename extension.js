@@ -331,16 +331,55 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
       throw new Error(`Unknown mode: ${modeName}`);
     }
 
+    const wasSessionRunning = await this._isSessionRunning();
+    const wasContainerActive = await this._isContainerActive();
+
     await this._runCommand(['waydroid', 'prop', 'set', 'persist.waydroid.width', `${mode.width}`]);
     await this._runCommand(['waydroid', 'prop', 'set', 'persist.waydroid.height', `${mode.height}`]);
     await this._runCommand(['waydroid', 'prop', 'set', 'persist.waydroid.dpi', `${mode.dpi}`]);
 
-    const sessionRunning = await this._isSessionRunning();
-    if (sessionRunning) {
-      await this._stopSession();
-      await this._startSession();
+    await this._verifyModeProps(mode);
+
+    const parts = [`Configured ${mode.label} properties`];
+
+    if (wasSessionRunning) {
+      parts.push(await this._stopSession());
     }
-    return 'Applied selected mode';
+
+    if (wasContainerActive) {
+      parts.push(await this._stopSystemContainer());
+      parts.push(await this._startSystemContainer());
+    }
+
+    if (wasSessionRunning) {
+      parts.push(await this._startSession());
+    }
+
+    return parts.filter(Boolean).join('; ');
+  }
+
+  _parseNumericProp(rawValue, propName) {
+    const match = `${rawValue}`.match(/-?\d+/);
+    if (!match) {
+      throw new Error(`Unable to parse ${propName} value from: ${rawValue}`);
+    }
+    return Number.parseInt(match[0], 10);
+  }
+
+  async _verifyModeProps(mode) {
+    const widthRaw = (await this._runCommand(['waydroid', 'prop', 'get', 'persist.waydroid.width'])).stdout;
+    const heightRaw = (await this._runCommand(['waydroid', 'prop', 'get', 'persist.waydroid.height'])).stdout;
+    const dpiRaw = (await this._runCommand(['waydroid', 'prop', 'get', 'persist.waydroid.dpi'])).stdout;
+
+    const width = this._parseNumericProp(widthRaw, 'persist.waydroid.width');
+    const height = this._parseNumericProp(heightRaw, 'persist.waydroid.height');
+    const dpi = this._parseNumericProp(dpiRaw, 'persist.waydroid.dpi');
+
+    if (width !== mode.width || height !== mode.height || dpi !== mode.dpi) {
+      throw new Error(
+        `Mode verification failed (expected ${mode.width}x${mode.height}@${mode.dpi}, got ${width}x${height}@${dpi})`
+      );
+    }
   }
 
   async _killAll() {
