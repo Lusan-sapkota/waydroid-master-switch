@@ -46,7 +46,7 @@ cd waydroid-master-switch
 ### 2. Run the installer
 
 ```bash
-./install.sh
+bash install.sh
 ```
 
 ### 3. Restart GNOME Shell
