@@ -2,36 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3] - 2026-05-10
+
+### Added
+- **Always on Top Toggle**: New menu action to force the Waydroid window to stay above all other windows.
+- **Smart Auto-Adjust**: Automated logic to scale down Phone/Tablet mode resolutions if they exceed the laptop's screen height, preventing overflow.
+- **Uninstall Script**: Added `uninstall.sh` for easy removal with a friendly goodbye message.
+- **Improved Update Logic**: `install.sh` now attempts to disable, refresh, and re-enable the extension to apply code changes without a full logout (best-effort).
+
+### Changed
+- Refactored `install.sh` to be more robust and informative.
+- Updated `README.md` with better instructions and troubleshooting tips.
+- Improved logout/restart terminology for Wayland vs X11 users.
+
+### Fixed
+- Mode switching reliability issues where container restarts weren't always triggering property updates.
+- Corrected installation path errors in documentation.
+
 ## [1.2] - 2026-05-10
 
 ### Added
-- Added a binder preflight check before applying mode changes.
-- Mode changes now fail fast with a clear message when Waydroid binder support is missing.
-
-### Fixed
-- Prevented Phone/Tablet mode actions from hanging the shell when `waydroid prop set` waits on a missing binder service manager.
+- Basic Phone/Tablet mode switching.
+- Container restart logic.
 
 ## [1.1] - 2026-05-10
 
 ### Added
-- Phone mode preset updated to 720x1280 @ 320 DPI.
-- Mode application now restarts the session when needed so display changes take effect reliably.
-- More detailed README documentation for every action, mode workflow, and troubleshooting flow.
-
-### Changed
-- Improved Start All / Stop All behavior for mixed container/session states.
-- Improved Waydroid state detection to use `waydroid status`.
-- Added clearer journal logging and runtime status messages.
-
-### Fixed
-- Avoided parsing errors when Waydroid properties are unavailable while the session is stopped.
-- Prevented empty or invalid prop output from breaking mode application.
-
-## [1.0] - 2026-05-10
-
-### Added
-- Initial release of Waydroid Master Switch.
-- Quick Settings tile for Waydroid container and session control.
-- Start All, Stop All, Start Session, Stop Session, Start/Stop System Container, and Kill All actions.
-- Phone and tablet mode presets.
-- Notifications and journal logging for actions.
+- Initial Quick Settings integration.
+- Session and Container status tracking.

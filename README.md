@@ -22,7 +22,11 @@ This extension manages both:
 - **Mid-flight Mode Switching**: Change resolution and DPI while session is running; extension restarts session to apply mode
 - **Non-blocking UI**: All operations run detached; extension doesn't freeze while waiting
 - **Status Display**: Header shows live Session and Container state
+- **Always on Top Toggle**: Keep the Waydroid window floating above other windows
+- **Smart Auto-Adjust**: Automatically scales mode resolution to fit your laptop screen
 - **Logging**: All actions logged to systemd journal for debugging
+
+See the [CHANGELOG.md](CHANGELOG.md) for a full history of updates.
 
 ## Requirements
 
@@ -128,7 +132,7 @@ Open Quick Settings and look for the Waydroid tile (Android icon). The tile show
 
 **What it does**: Configures Android to emulate a phone display (larger resolution, higher DPI for scaling).
 
-> **✨ Smart Auto-Adjust**: If your laptop screen height is shorter than the requested Phone Mode height (e.g., on a 1080p display), the extension will automatically scale down the width, height, and DPI to perfectly fit your screen without clipping or overflowing!
+> **Smart Auto-Adjust**: If your laptop screen height is shorter than the requested Phone Mode height (e.g., on a 1080p display), the extension will automatically scale down the width, height, and DPI to perfectly fit your screen without clipping or overflowing!
 
 **Flow**:
 1. Set Android system properties:

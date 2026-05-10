@@ -12,7 +12,7 @@ const MODE_PROFILES = {
   tablet: { label: 'Tablet Mode', width: 1280, height: 800, dpi: 240 },
 };
 
-const EXTENSION_BUILD = '2026-05-10-mode-debug-1';
+const EXTENSION_BUILD = '2026-05-10-v1.3';
 
 function runCommand(command, { shell = false } = {}) {
   return new Promise((resolve, reject) => {

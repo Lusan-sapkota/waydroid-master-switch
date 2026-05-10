@@ -19,6 +19,15 @@ if [ ! -f "extension.js" ]; then
     exit 1
 fi
 
+# Detect if the extension is currently enabled
+IS_ENABLED=false
+if gnome-extensions list --enabled | grep -q "$EXT_ID"; then
+    IS_ENABLED=true
+    echo "Detected that the extension is currently enabled. Disabling for update..."
+    gnome-extensions disable "$EXT_ID"
+    sleep 1
+fi
+
 if [ -d "$DEST_DIR" ]; then
     echo "Existing installation found at $DEST_DIR"
     
@@ -35,12 +44,13 @@ else
 fi
 
 # Try to trigger a refresh of the extensions list (best effort)
+AUTO_ENABLED=false
 if command -v dbus-send >/dev/null; then
     echo "Attempting to refresh GNOME extensions list via D-Bus..."
     dbus-send --type=method_call --dest=org.gnome.Shell /org/gnome/Shell org.gnome.Shell.Extensions.InstallRemoteExtension string 'dummy' >/dev/null 2>&1
     
     # Wait a moment for GNOME to process the refresh
-    sleep 1
+    sleep 2
     
     echo "Attempting to enable extension..."
     if gnome-extensions enable "$EXT_ID" 2>/dev/null; then
@@ -60,7 +70,7 @@ if [ "$AUTO_ENABLED" = false ]; then
     echo ""
     echo "IF THE EXTENSION IS NOT SHOWING in Quick Settings:"
     echo ""
-    echo "1. Restart GNOME Shell / Logout (Required for first-time installs):"
+    echo "1. Restart GNOME Shell / Logout (Required for first-time installs or code updates):"
     echo "   - Wayland (Ubuntu default): Log out and log back in."
     echo "   - X11: Press Alt+F2, type 'r', and press Enter."
     echo ""
@@ -72,5 +82,6 @@ if [ "$AUTO_ENABLED" = false ]; then
 else
     echo ""
     echo "The extension is now active! Look for the Android icon in your Quick Settings."
+    echo "If you don't see the new features, a logout/restart is still recommended."
     echo "------------------------------------------"
 fi
