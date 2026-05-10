@@ -157,18 +157,38 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
   }
 
   async _startSystemContainer() {
+    const active = await this._isContainerActive();
+    if (active) {
+      return;
+    }
     await this._runCommand(['pkexec', 'systemctl', 'start', 'waydroid-container']);
   }
 
   async _stopSystemContainer() {
+    const active = await this._isContainerActive();
+    if (!active) {
+      return;
+    }
     await this._runCommand(['pkexec', 'systemctl', 'stop', 'waydroid-container']);
   }
 
   async _startSession() {
+    const sessionRunning = await this._isSessionRunning();
+    if (sessionRunning) {
+      return;
+    }
+    const containerActive = await this._isContainerActive();
+    if (!containerActive) {
+      throw new Error('System container is inactive. Start it first.');
+    }
     await this._runCommand(['waydroid', 'session', 'start']);
   }
 
   async _stopSession() {
+    const sessionRunning = await this._isSessionRunning();
+    if (!sessionRunning) {
+      return;
+    }
     await this._runCommand(['waydroid', 'session', 'stop']);
   }
 
@@ -185,8 +205,8 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
     const sessionRunning = await this._isSessionRunning();
     if (sessionRunning) {
       await this._stopSession();
+      await this._startSession();
     }
-    await this._startSession();
   }
 
   async _killAll() {
