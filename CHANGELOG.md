@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2] - 2026-05-10
+
+### Added
+- Added a binder preflight check before applying mode changes.
+- Mode changes now fail fast with a clear message when Waydroid binder support is missing.
+
+### Fixed
+- Prevented Phone/Tablet mode actions from hanging the shell when `waydroid prop set` waits on a missing binder service manager.
+
 ## [1.1] - 2026-05-10
 
 ### Added
