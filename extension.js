@@ -38,6 +38,30 @@ function runCommand(command, { shell = false } = {}) {
   });
 }
 
+function runCommandDetached(command, { shell = false } = {}) {
+  let argv = command;
+  if (shell) {
+    argv = ['/bin/sh', '-c', command];
+  }
+
+  try {
+    const flags = GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD;
+    const pid = GLib.spawn_async(null, argv, null, flags, null);
+    // Reap child when it exits
+    GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, (childPid, status) => {
+      try {
+        GLib.spawn_close_pid(childPid);
+        log(`[waydroid-master-switch] detached pid ${childPid} exited with ${status}`);
+      } catch (e) {
+        log(e);
+      }
+    });
+    return pid;
+  } catch (e) {
+    throw new Error(`Failed to spawn command: ${e}`);
+  }
+}
+
 const WaydroidToggle = GObject.registerClass(
 class WaydroidToggle extends QuickSettings.QuickMenuToggle {
   _init() {
@@ -148,18 +172,9 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
   }
 
   _setBusy(isBusy) {
+    // Keep _busy state internally, but do not disable menu interactivity.
+    // Disabling the menu caused the UI to feel hung while polkit waited.
     this._busy = isBusy;
-    const isEnabled = !isBusy;
-
-    if (typeof this.setSensitive === 'function') {
-      this.setSensitive(isEnabled);
-    } else {
-      this.reactive = isEnabled;
-      this.can_focus = isEnabled;
-      if (this.menu?.actor) {
-        this.menu.actor.reactive = isEnabled;
-      }
-    }
   }
 
   async _handleToggle() {
@@ -189,10 +204,26 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
     if (active) {
       return 'Waydroid system container is already running';
     }
-    this._log('Invoking pkexec to start system container');
+    this._log('Invoking pkexec to start system container (detached)');
     this._notifyInfo('Requesting authentication to start Waydroid container');
-    await this._runCommand(['pkexec', 'systemctl', 'start', 'waydroid-container']);
-    return 'Started Waydroid system container';
+
+    // Spawn pkexec detached so we don't block the UI; then poll status.
+    runCommandDetached(['pkexec', 'systemctl', 'start', 'waydroid-container']);
+
+    // Wait for the container to appear active (poll), but avoid hanging forever.
+    const timeout = 30; // seconds
+    const interval = 2; // seconds
+    let waited = 0;
+    while (waited < timeout) {
+      await new Promise(r => GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, interval, () => { r(); return GLib.SOURCE_REMOVE; }));
+      waited += interval;
+      const nowActive = await this._isContainerActive();
+      if (nowActive) {
+        return 'Started Waydroid system container';
+      }
+    }
+
+    throw new Error('Timed out waiting for waydroid-container to start (polkit prompt may have been dismissed)');
   }
 
   async _stopSystemContainer() {
@@ -200,10 +231,23 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
     if (!active) {
       return 'Waydroid system container is already stopped';
     }
-    this._log('Invoking pkexec to stop system container');
+    this._log('Invoking pkexec to stop system container (detached)');
     this._notifyInfo('Requesting authentication to stop Waydroid container');
-    await this._runCommand(['pkexec', 'systemctl', 'stop', 'waydroid-container']);
-    return 'Stopped Waydroid system container';
+    runCommandDetached(['pkexec', 'systemctl', 'stop', 'waydroid-container']);
+
+    const timeout = 30; // seconds
+    const interval = 2; // seconds
+    let waited = 0;
+    while (waited < timeout) {
+      await new Promise(r => GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, interval, () => { r(); return GLib.SOURCE_REMOVE; }));
+      waited += interval;
+      const nowActive = await this._isContainerActive();
+      if (!nowActive) {
+        return 'Stopped Waydroid system container';
+      }
+    }
+
+    throw new Error('Timed out waiting for waydroid-container to stop (polkit prompt may have been dismissed)');
   }
 
   async _startSession() {
