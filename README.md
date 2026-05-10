@@ -15,15 +15,46 @@ Waydroid Master Switch is a GNOME Shell extension that provides a single Quick S
 
 - Ubuntu with GNOME 50 (Wayland recommended)
 - Waydroid installed and working
-- pkexec available for systemd control
+- pkexec (polkit) available for systemd control
+- gnome-extensions CLI (installed with GNOME Shell)
 
 ## Install
 
-1. Copy or symlink this folder to:
-   ~/.local/share/gnome-shell/extensions/waydroid-master-switch@lusan
-2. Restart GNOME Shell (log out/in on Wayland).
-3. Enable the extension:
-   gnome-extensions enable waydroid-master-switch@lusan
+### From GitHub
+
+Symlink (recommended for updates):
+
+```
+git clone https://github.com/Lusan-sapkota/waydroid-master-switch.git
+cd waydroid-master-switch
+mkdir -p ~/.local/share/gnome-shell/extensions
+ln -s "$(pwd)" ~/.local/share/gnome-shell/extensions/waydroid-master-switch@lusan
+```
+
+Copy (no symlink):
+
+```
+git clone https://github.com/Lusan-sapkota/waydroid-master-switch.git
+mkdir -p ~/.local/share/gnome-shell/extensions
+cp -r waydroid-master-switch ~/.local/share/gnome-shell/extensions/waydroid-master-switch@lusan
+```
+
+Enable the extension:
+
+```
+gnome-extensions enable waydroid-master-switch@lusan
+```
+
+Restart GNOME Shell:
+
+- Wayland: log out and log back in
+- X11: press Alt+F2, type r, press Enter
+
+Verify:
+
+```
+gnome-extensions list | grep waydroid-master-switch
+```
 
 ## Usage
 
@@ -39,4 +70,5 @@ Open Quick Settings and click the Waydroid tile:
 
 ## Notes
 
-- systemd actions use pkexec and may prompt for privileges.
+- systemd actions use pkexec and will show the GNOME authentication dialog for your password.
+- If you cancel the dialog, the action fails and a notification is shown.
