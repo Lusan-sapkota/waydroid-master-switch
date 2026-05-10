@@ -69,6 +69,20 @@ Verify:
 gnome-extensions list | grep waydroid-master-switch
 ```
 
+## Uninstall
+
+To remove the extension, disable it first and then remove the files:
+
+```bash
+# Disable the extension
+gnome-extensions disable waydroid-master-switch@lusan
+
+# Remove the files
+rm -rf ~/.local/share/gnome-shell/extensions/waydroid-master-switch@lusan
+```
+
+Restart GNOME Shell (Log out and back in on Wayland) to complete the removal.
+
 ## Usage
 
 ### Quick Settings Menu
