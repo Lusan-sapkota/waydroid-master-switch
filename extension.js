@@ -340,10 +340,8 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
     await this._runCommand(['waydroid', 'prop', 'set', 'persist.waydroid.height', `${mode.height}`]);
     await this._runCommand(['waydroid', 'prop', 'set', 'persist.waydroid.dpi', `${mode.dpi}`]);
 
-    const verified = await this._verifyModeProps(mode);
-
     const parts = [
-      `Configured ${mode.label} (${verified.width}x${verified.height}@${verified.dpi})`,
+      `Configured ${mode.label} (${mode.width}x${mode.height}@${mode.dpi})`,
     ];
 
     if (wasSessionRunning) {
@@ -357,6 +355,9 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
       }
 
       parts.push(await this._startSession());
+
+      const verified = await this._verifyModeProps(mode);
+      parts[0] = `Configured ${mode.label} (${verified.width}x${verified.height}@${verified.dpi})`;
     }
 
     return parts.filter(Boolean).join('; ');
@@ -374,6 +375,10 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
     const widthRaw = (await this._runCommand(['waydroid', 'prop', 'get', 'persist.waydroid.width'])).stdout;
     const heightRaw = (await this._runCommand(['waydroid', 'prop', 'get', 'persist.waydroid.height'])).stdout;
     const dpiRaw = (await this._runCommand(['waydroid', 'prop', 'get', 'persist.waydroid.dpi'])).stdout;
+
+    if (!widthRaw || !heightRaw || !dpiRaw) {
+      throw new Error('Mode verification unavailable while Waydroid session is stopped');
+    }
 
     const width = this._parseNumericProp(widthRaw, 'persist.waydroid.width');
     const height = this._parseNumericProp(heightRaw, 'persist.waydroid.height');
