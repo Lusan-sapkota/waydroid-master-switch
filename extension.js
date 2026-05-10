@@ -8,7 +8,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const MODE_PROFILES = {
-  phone: { label: 'Phone Mode', width: 540, height: 960, dpi: 320 },
+  phone: { label: 'Phone Mode', width: 720, height: 1280, dpi: 320 },
   tablet: { label: 'Tablet Mode', width: 1280, height: 800, dpi: 240 },
 };
 
@@ -92,7 +92,7 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
     });
     this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-    this.menu.addAction('Phone Mode (540x960 @320)', () => {
+    this.menu.addAction('Phone Mode (720x1280 @320)', () => {
       this._runAction(() => this._applyMode('phone'), 'apply phone mode');
     });
     this.menu.addAction('Tablet Mode (1280x800 @240)', () => {
