@@ -45,20 +45,19 @@ function runCommandDetached(command, { shell = false } = {}) {
   }
 
   try {
-    const flags = GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD;
-    const pid = GLib.spawn_async(null, argv, null, flags, null);
-    // Reap child when it exits
-    GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, (childPid, status) => {
+    const flags = Gio.SubprocessFlags.NONE;
+    const proc = Gio.Subprocess.new(argv, flags);
+    proc.wait_async(null, (p, res) => {
       try {
-        GLib.spawn_close_pid(childPid);
-        log(`[waydroid-master-switch] detached pid ${childPid} exited with ${status}`);
+        const resCode = p.wait_finish(res);
+        log(`[waydroid-master-switch] detached child exited: ${resCode}`);
       } catch (e) {
-        log(e);
+        log(`[waydroid-master-switch] detached child wait error: ${e}`);
       }
     });
-    return pid;
+    return proc;
   } catch (e) {
-    throw new Error(`Failed to spawn command: ${e}`);
+    throw new Error(`Failed to spawn detached command: ${e}`);
   }
 }
 
