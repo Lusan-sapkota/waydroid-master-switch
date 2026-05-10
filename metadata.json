@@ -2,6 +2,8 @@
   "uuid": "waydroid-master-switch@lusan",
   "name": "Waydroid Master Switch",
   "description": "Master switch to start/stop Waydroid container and session, with phone and tablet modes.",
-  "shell-version": ["50"],
-  "version": 1.3
+  "shell-version": [
+    "50"
+  ],
+  "version": 1.4
 }

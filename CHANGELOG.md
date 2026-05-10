@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4] - 2026-05-10
+
+### Added
+- **Full Screen Mode**: New menu option that dynamically reads your monitor resolution and sets Waydroid to fill the screen.
+- **Phone Mode (Fixed)**: Added a dedicated fixed-resolution (720x1280) mode for users who want to bypass auto-scaling.
+- **Improved Mode Selection**: Renamed standard modes to "Auto" to clarify the smart-scaling behavior.
+
 ## [1.3] - 2026-05-10
 
 ### Added

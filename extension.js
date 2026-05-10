@@ -8,11 +8,13 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const MODE_PROFILES = {
-  phone: { label: 'Phone Mode', width: 720, height: 1280, dpi: 320 },
-  tablet: { label: 'Tablet Mode', width: 1280, height: 800, dpi: 240 },
+  phone: { label: 'Phone Mode (Auto)', width: 720, height: 1280, dpi: 320, autoAdjust: true },
+  phone_fixed: { label: 'Phone Mode (Fixed)', width: 720, height: 1280, dpi: 320, autoAdjust: false },
+  tablet: { label: 'Tablet Mode', width: 1280, height: 800, dpi: 240, autoAdjust: true },
+  fullscreen: { label: 'Full Screen Mode', width: 0, height: 0, dpi: 240, autoAdjust: false },
 };
 
-const EXTENSION_BUILD = '2026-05-10-v1.3';
+const EXTENSION_BUILD = '2026-05-10-v1.4';
 
 function runCommand(command, { shell = false } = {}) {
   return new Promise((resolve, reject) => {
@@ -92,11 +94,17 @@ const WaydroidToggle = GObject.registerClass(
       });
       this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-      this.menu.addAction('Phone Mode (720x1280 @320)', () => {
-        this._runAction(() => this._applyMode('phone'), 'apply phone mode');
+      this.menu.addAction('Phone Mode (Auto)', () => {
+        this._runAction(() => this._applyMode('phone'), 'apply phone mode auto');
+      });
+      this.menu.addAction('Phone Mode (Fixed - 720x1280)', () => {
+        this._runAction(() => this._applyMode('phone_fixed'), 'apply phone mode fixed');
       });
       this.menu.addAction('Tablet Mode (1280x800 @240)', () => {
         this._runAction(() => this._applyMode('tablet'), 'apply tablet mode');
+      });
+      this.menu.addAction('Full Screen Mode', () => {
+        this._runAction(() => this._applyMode('fullscreen'), 'apply full screen mode');
       });
       this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
@@ -364,14 +372,19 @@ const WaydroidToggle = GObject.registerClass(
 
       const monitor = Main.layoutManager.primaryMonitor;
       if (monitor) {
-        const padding = 120; // Space for GNOME top bar and dock
-        const maxAllowedHeight = monitor.height - padding;
-        if (mode.height > maxAllowedHeight) {
-          const scale = maxAllowedHeight / mode.height;
-          mode.height = Math.round(mode.height * scale);
-          mode.width = Math.round(mode.width * scale);
-          mode.dpi = Math.round(mode.dpi * scale);
-          this._log(`Auto-adjusted ${modeName} to fit screen: ${mode.width}x${mode.height}@${mode.dpi}`);
+        if (modeName === 'fullscreen') {
+          mode.width = monitor.width;
+          mode.height = monitor.height;
+        } else if (mode.autoAdjust) {
+          const padding = 120; // Space for GNOME top bar and dock
+          const maxAllowedHeight = monitor.height - padding;
+          if (mode.height > maxAllowedHeight) {
+            const scale = maxAllowedHeight / mode.height;
+            mode.height = Math.round(mode.height * scale);
+            mode.width = Math.round(mode.width * scale);
+            mode.dpi = Math.round(mode.dpi * scale);
+            this._log(`Auto-adjusted ${modeName} to fit screen: ${mode.width}x${mode.height}@${mode.dpi}`);
+          }
         }
       }
 

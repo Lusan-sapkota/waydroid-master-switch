@@ -128,17 +128,17 @@ Open Quick Settings and look for the Waydroid tile (Android icon). The tile show
 
 **Prerequisite**: Container must be active.
 
-#### Phone Mode (720x1280 @ 320 DPI)
+#### Phone Mode (Auto) & Phone Mode (Fixed)
 
 **What it does**: Configures Android to emulate a phone display (larger resolution, higher DPI for scaling).
-
-> **Smart Auto-Adjust**: If your laptop screen height is shorter than the requested Phone Mode height (e.g., on a 1080p display), the extension will automatically scale down the width, height, and DPI to perfectly fit your screen without clipping or overflowing!
+- **Phone Mode (Auto)**: Intelligently scales down the 720x1280 resolution to fit your laptop screen perfectly without clipping or overflowing.
+- **Phone Mode (Fixed)**: Forces the exact 720x1280 resolution, regardless of your screen size.
 
 **Flow**:
 1. Set Android system properties:
-   - `persist.waydroid.width`: 720 (scaled if needed)
-   - `persist.waydroid.height`: 1280 (scaled if needed)
-   - `persist.waydroid.dpi`: 320 (scaled if needed)
+   - `persist.waydroid.width`: 720 (scaled if Auto)
+   - `persist.waydroid.height`: 1280 (scaled if Auto)
+   - `persist.waydroid.dpi`: 320 (scaled if Auto)
 2. Verify properties were actually set; fail if verification fails.
 3. **If session is running (mid-flight mode change)**:
    - Stop the session.
@@ -154,7 +154,7 @@ Open Quick Settings and look for the Waydroid tile (Android icon). The tile show
 - If already running: session restarts (may take 5-15 seconds), then UI appears in phone layout.
 - If not running: mode is ready; start session and you'll get phone layout.
 
-**Result message**: "Configured Phone Mode (720x1280@320); Stopped Waydroid session; Stopped Waydroid system container; Started Waydroid system container; Started Waydroid session"
+**Result message**: "Configured Phone Mode (Auto) (ScaledWxScaledH@ScaledDPI); Stopped Waydroid session; Stopped Waydroid system container; Started Waydroid system container; Started Waydroid session"
 
 #### Tablet Mode (1280x800 @ 240 DPI)
 
@@ -163,6 +163,14 @@ Open Quick Settings and look for the Waydroid tile (Android icon). The tile show
 **Flow**: Same as Phone Mode, but with tablet values (1280x800@240). Auto-adjust is also applied here if the screen is too small.
 
 **When to use**: Want tablet-sized Android UI; testing tablet apps.
+
+#### Full Screen Mode
+
+**What it does**: Dynamically reads your primary monitor's current exact resolution and configures Waydroid to run at that exact size.
+
+**Flow**: Same restart sequence as Phone/Tablet modes, but applies your full screen dimensions.
+
+**When to use**: When you want Waydroid to take over your entire screen like a native desktop operating system.
 
 #### Toggle Window Always on Top
 
