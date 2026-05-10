@@ -336,6 +336,8 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
 
     const wasSessionRunning = await this._isSessionRunning();
 
+    await this._ensureBinderAvailable();
+
     await this._runCommand(['waydroid', 'prop', 'set', 'persist.waydroid.width', `${mode.width}`]);
     await this._runCommand(['waydroid', 'prop', 'set', 'persist.waydroid.height', `${mode.height}`]);
     await this._runCommand(['waydroid', 'prop', 'set', 'persist.waydroid.dpi', `${mode.dpi}`]);
@@ -391,6 +393,16 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
     }
 
     return { width, height, dpi };
+  }
+
+  async _ensureBinderAvailable() {
+    const hasBinder = GLib.file_test('/dev/anbox-binder', GLib.FileTest.EXISTS) ||
+      GLib.file_test('/dev/binder', GLib.FileTest.EXISTS) ||
+      GLib.file_test('/dev/binderfs', GLib.FileTest.EXISTS);
+
+    if (!hasBinder) {
+      throw new Error('Waydroid binder device is not available (/dev/anbox-binder missing). Start Waydroid/container fully or fix binder support before changing modes.');
+    }
   }
 
   async _killAll() {
