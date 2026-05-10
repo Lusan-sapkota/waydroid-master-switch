@@ -48,8 +48,9 @@ ln -s "$(pwd)" ~/.local/share/gnome-shell/extensions/waydroid-master-switch@lusa
 
 ```bash
 git clone https://github.com/Lusan-sapkota/waydroid-master-switch.git
+cd waydroid-master-switch
 mkdir -p ~/.local/share/gnome-shell/extensions
-cp -r waydroid-master-switch ~/.local/share/gnome-shell/extensions/waydroid-master-switch@lusan
+cp -r . ~/.local/share/gnome-shell/extensions/waydroid-master-switch@lusan
 ```
 
 Enable the extension:
