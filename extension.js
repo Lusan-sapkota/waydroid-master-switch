@@ -12,6 +12,8 @@ const MODE_PROFILES = {
   tablet: { label: 'Tablet Mode', width: 1280, height: 800, dpi: 240 },
 };
 
+const EXTENSION_BUILD = '2026-05-10-mode-debug-1';
+
 function runCommand(command, { shell = false } = {}) {
   return new Promise((resolve, reject) => {
     let argv = command;
@@ -133,6 +135,7 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
     );
 
     this._syncState();
+    this._log(`Loaded build: ${EXTENSION_BUILD}`);
   }
 
   destroy() {
@@ -332,26 +335,27 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
     }
 
     const wasSessionRunning = await this._isSessionRunning();
-    const wasContainerActive = await this._isContainerActive();
 
     await this._runCommand(['waydroid', 'prop', 'set', 'persist.waydroid.width', `${mode.width}`]);
     await this._runCommand(['waydroid', 'prop', 'set', 'persist.waydroid.height', `${mode.height}`]);
     await this._runCommand(['waydroid', 'prop', 'set', 'persist.waydroid.dpi', `${mode.dpi}`]);
 
-    await this._verifyModeProps(mode);
+    const verified = await this._verifyModeProps(mode);
 
-    const parts = [`Configured ${mode.label} properties`];
+    const parts = [
+      `Configured ${mode.label} (${verified.width}x${verified.height}@${verified.dpi})`,
+    ];
 
     if (wasSessionRunning) {
+      this._log(`Mode changed mid-flight; restarting session to apply ${mode.label}`);
       parts.push(await this._stopSession());
-    }
 
-    if (wasContainerActive) {
-      parts.push(await this._stopSystemContainer());
-      parts.push(await this._startSystemContainer());
-    }
+      const containerActive = await this._isContainerActive();
+      if (containerActive) {
+        parts.push(await this._stopSystemContainer());
+        parts.push(await this._startSystemContainer());
+      }
 
-    if (wasSessionRunning) {
       parts.push(await this._startSession());
     }
 
@@ -380,6 +384,8 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
         `Mode verification failed (expected ${mode.width}x${mode.height}@${mode.dpi}, got ${width}x${height}@${dpi})`
       );
     }
+
+    return { width, height, dpi };
   }
 
   async _killAll() {
