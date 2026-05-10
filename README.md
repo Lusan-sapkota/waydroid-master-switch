@@ -31,38 +31,36 @@ This extension manages both:
 - `pkexec` (polkit) available for systemd control
 - `gnome-extensions` CLI (installed with GNOME Shell)
 
-## Install
+## Install & Update
 
-### From GitHub
+The easiest way to install or update the extension is using the provided `install.sh` script.
 
-**Symlink (recommended for development/updates):**
-
-```bash
-git clone https://github.com/Lusan-sapkota/waydroid-master-switch.git
-cd waydroid-master-switch
-mkdir -p ~/.local/share/gnome-shell/extensions
-ln -s "$(pwd)" ~/.local/share/gnome-shell/extensions/waydroid-master-switch@lusan
-```
-
-**Copy (standalone):**
+### 1. Clone or Pull the latest code
 
 ```bash
 git clone https://github.com/Lusan-sapkota/waydroid-master-switch.git
 cd waydroid-master-switch
-mkdir -p ~/.local/share/gnome-shell/extensions
-cp -r . ~/.local/share/gnome-shell/extensions/waydroid-master-switch@lusan
+# Or if already cloned: git pull
 ```
 
-Enable the extension:
+### 2. Run the installer
+
+```bash
+./install.sh
+```
+
+### 3. Restart GNOME Shell
+
+GNOME Shell must be restarted before it will recognize the new extension files:
+
+- **Wayland (Ubuntu default)**: Log out and log back in.
+- **X11**: Press Alt+F2, type 'r', and press Enter.
+
+### 4. Enable the extension
 
 ```bash
 gnome-extensions enable waydroid-master-switch@lusan
 ```
-
-Restart GNOME Shell:
-
-- **Wayland**: Log out and log back in.
-- **X11**: Press Alt+F2, type `r`, press Enter.
 
 Verify:
 
