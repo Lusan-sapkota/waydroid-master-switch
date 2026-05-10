@@ -201,6 +201,7 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
   async _startSystemContainer() {
     const active = await this._isContainerActive();
     if (active) {
+      this._log('Container already active; skipping pkexec start');
       return 'Waydroid system container is already running';
     }
     this._log('Invoking pkexec to start system container (detached)');
@@ -228,6 +229,7 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
   async _stopSystemContainer() {
     const active = await this._isContainerActive();
     if (!active) {
+      this._log('Container already inactive; skipping pkexec stop');
       return 'Waydroid system container is already stopped';
     }
     this._log('Invoking pkexec to stop system container (detached)');
@@ -258,8 +260,23 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
     if (!containerActive) {
       throw new Error('System container is inactive. Start it first.');
     }
-    await this._runCommand(['waydroid', 'session', 'start']);
-    return 'Started Waydroid session';
+
+    this._log('Starting Waydroid session (detached)');
+    runCommandDetached(['waydroid', 'session', 'start']);
+
+    const timeout = 20; // seconds
+    const interval = 1; // seconds
+    let waited = 0;
+    while (waited < timeout) {
+      await new Promise(r => GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, interval, () => { r(); return GLib.SOURCE_REMOVE; }));
+      waited += interval;
+      const nowRunning = await this._isSessionRunning();
+      if (nowRunning) {
+        return 'Started Waydroid session';
+      }
+    }
+
+    throw new Error('Timed out waiting for Waydroid session to start');
   }
 
   async _stopSession() {
@@ -267,8 +284,23 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
     if (!sessionRunning) {
       return 'Waydroid session is already stopped';
     }
-    await this._runCommand(['waydroid', 'session', 'stop']);
-    return 'Stopped Waydroid session';
+
+    this._log('Stopping Waydroid session (detached)');
+    runCommandDetached(['waydroid', 'session', 'stop']);
+
+    const timeout = 20; // seconds
+    const interval = 1; // seconds
+    let waited = 0;
+    while (waited < timeout) {
+      await new Promise(r => GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, interval, () => { r(); return GLib.SOURCE_REMOVE; }));
+      waited += interval;
+      const nowRunning = await this._isSessionRunning();
+      if (!nowRunning) {
+        return 'Stopped Waydroid session';
+      }
+    }
+
+    throw new Error('Timed out waiting for Waydroid session to stop');
   }
 
   async _applyMode(modeName) {
