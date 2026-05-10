@@ -122,25 +122,43 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
 
   async _runAction(actionFn, description) {
     if (this._busy) {
+      this._log(`Action skipped (busy): ${description}`);
       return;
     }
-    this._setBusy(true);
     try {
+      this._setBusy(true);
+      this._log(`Action requested: ${description}`);
       const result = await actionFn();
       if (result) {
         this._notifyInfo(result);
+        this._log(`Action completed: ${description} -> ${result}`);
+      } else {
+        this._log(`Action completed: ${description}`);
       }
     } catch (error) {
       this._notifyError(description, error);
+      this._log(`Action failed: ${description} -> ${error?.message ?? error}`);
     } finally {
       this._setBusy(false);
-      this._syncState();
+      this._syncState().catch(error => {
+        this._log(`State sync failed: ${error?.message ?? error}`);
+      });
     }
   }
 
   _setBusy(isBusy) {
     this._busy = isBusy;
-    this.setSensitive(!isBusy);
+    const isEnabled = !isBusy;
+
+    if (typeof this.setSensitive === 'function') {
+      this.setSensitive(isEnabled);
+    } else {
+      this.reactive = isEnabled;
+      this.can_focus = isEnabled;
+      if (this.menu?.actor) {
+        this.menu.actor.reactive = isEnabled;
+      }
+    }
   }
 
   async _handleToggle() {
@@ -291,6 +309,10 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
 
   _notifyInfo(message) {
     Main.notify('Waydroid Master Switch', message);
+  }
+
+  _log(message) {
+    log(`[waydroid-master-switch] ${message}`);
   }
 }
 );
