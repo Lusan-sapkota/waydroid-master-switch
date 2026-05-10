@@ -64,431 +64,464 @@ function runCommandDetached(command, { shell = false } = {}) {
 }
 
 const WaydroidToggle = GObject.registerClass(
-class WaydroidToggle extends QuickSettings.QuickMenuToggle {
-  _init() {
-    super._init({
-      title: 'Waydroid',
-      iconName: 'android-symbolic',
-      toggleMode: true,
-    });
+  class WaydroidToggle extends QuickSettings.QuickMenuToggle {
+    _init() {
+      super._init({
+        title: 'Waydroid',
+        iconName: 'android-symbolic',
+        toggleMode: true,
+      });
 
-    this.menu.setHeader(
-      'android-symbolic',
-      'Waydroid Master Switch',
-      'Session: unknown | Container: unknown'
-    );
+      this.menu.setHeader(
+        'android-symbolic',
+        'Waydroid Master Switch',
+        'Session: unknown | Container: unknown'
+      );
 
-    this._busy = false;
-    this._suppressToggle = false;
-    this._syncing = false;
+      this._busy = false;
+      this._suppressToggle = false;
+      this._syncing = false;
 
-    this.menu.addAction('Start All (Container + Session)', () => {
-      this._runAction(() => this._startAll(), 'start all');
-    });
-    this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+      this.menu.addAction('Start All (Container + Session)', () => {
+        this._runAction(() => this._startAll(), 'start all');
+      });
+      this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-    this.menu.addAction('Start Session', () => {
-      this._runAction(() => this._startSession(), 'start session');
-    });
-    this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+      this.menu.addAction('Start Session', () => {
+        this._runAction(() => this._startSession(), 'start session');
+      });
+      this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-    this.menu.addAction('Phone Mode (720x1280 @320)', () => {
-      this._runAction(() => this._applyMode('phone'), 'apply phone mode');
-    });
-    this.menu.addAction('Tablet Mode (1280x800 @240)', () => {
-      this._runAction(() => this._applyMode('tablet'), 'apply tablet mode');
-    });
-    this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+      this.menu.addAction('Phone Mode (720x1280 @320)', () => {
+        this._runAction(() => this._applyMode('phone'), 'apply phone mode');
+      });
+      this.menu.addAction('Tablet Mode (1280x800 @240)', () => {
+        this._runAction(() => this._applyMode('tablet'), 'apply tablet mode');
+      });
+      this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-    this.menu.addAction('Start System Container', () => {
-      this._runAction(() => this._startSystemContainer(), 'start system container');
-    });
-    this.menu.addAction('Stop Session', () => {
-      this._runAction(() => this._stopSession(), 'stop session');
-    });
-    this.menu.addAction('Stop System Container', () => {
-      this._runAction(() => this._stopSystemContainer(), 'stop system container');
-    });
-    this.menu.addAction('Stop All (Session + Container)', () => {
-      this._runAction(() => this._stopAll(), 'stop all');
-    });
-    this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+      this.menu.addAction('Start System Container', () => {
+        this._runAction(() => this._startSystemContainer(), 'start system container');
+      });
+      this.menu.addAction('Stop Session', () => {
+        this._runAction(() => this._stopSession(), 'stop session');
+      });
+      this.menu.addAction('Stop System Container', () => {
+        this._runAction(() => this._stopSystemContainer(), 'stop system container');
+      });
+      this.menu.addAction('Stop All (Session + Container)', () => {
+        this._runAction(() => this._stopAll(), 'stop all');
+      });
+      this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-    this.menu.addAction('Kill All', () => {
-      this._runAction(() => this._killAll(), 'kill all');
-    });
+      this.menu.addAction('Kill All', () => {
+        this._runAction(() => this._killAll(), 'kill all');
+      });
 
-    this.connect('notify::checked', () => {
-      if (this._suppressToggle) {
+      this.connect('notify::checked', () => {
+        if (this._suppressToggle) {
+          return;
+        }
+        this._runAction(() => this._handleToggle(), 'toggle waydroid');
+      });
+
+      this._statusTimerId = GLib.timeout_add_seconds(
+        GLib.PRIORITY_DEFAULT,
+        15,
+        () => {
+          this._syncState();
+          return GLib.SOURCE_CONTINUE;
+        }
+      );
+
+      this._syncState();
+      this._log(`Loaded build: ${EXTENSION_BUILD}`);
+    }
+
+    destroy() {
+      if (this._statusTimerId) {
+        GLib.Source.remove(this._statusTimerId);
+        this._statusTimerId = 0;
+      }
+      super.destroy();
+    }
+
+    async _runAction(actionFn, description) {
+      if (this._busy) {
+        this._log(`Action skipped (busy): ${description}`);
         return;
       }
-      this._runAction(() => this._handleToggle(), 'toggle waydroid');
-    });
-
-    this._statusTimerId = GLib.timeout_add_seconds(
-      GLib.PRIORITY_DEFAULT,
-      15,
-      () => {
-        this._syncState();
-        return GLib.SOURCE_CONTINUE;
+      try {
+        this._setBusy(true);
+        this._log(`Action requested: ${description}`);
+        this._notifyInfo(`Running ${description}...`);
+        const result = await actionFn();
+        if (result) {
+          this._notifyInfo(result);
+          this._log(`Action completed: ${description} -> ${result}`);
+        } else {
+          this._log(`Action completed: ${description}`);
+        }
+      } catch (error) {
+        this._notifyError(description, error);
+        this._log(`Action failed: ${description} -> ${error?.message ?? error}`);
+      } finally {
+        this._setBusy(false);
+        this._syncState().catch(error => {
+          this._log(`State sync failed: ${error?.message ?? error}`);
+        });
       }
-    );
-
-    this._syncState();
-    this._log(`Loaded build: ${EXTENSION_BUILD}`);
-  }
-
-  destroy() {
-    if (this._statusTimerId) {
-      GLib.Source.remove(this._statusTimerId);
-      this._statusTimerId = 0;
     }
-    super.destroy();
-  }
 
-  async _runAction(actionFn, description) {
-    if (this._busy) {
-      this._log(`Action skipped (busy): ${description}`);
-      return;
+    _setBusy(isBusy) {
+      this._busy = isBusy;
     }
-    try {
-      this._setBusy(true);
-      this._log(`Action requested: ${description}`);
-      this._notifyInfo(`Running ${description}...`);
-      const result = await actionFn();
-      if (result) {
-        this._notifyInfo(result);
-        this._log(`Action completed: ${description} -> ${result}`);
+
+    async _handleToggle() {
+      if (this.checked) {
+        await this._startAll();
       } else {
-        this._log(`Action completed: ${description}`);
+        await this._stopAll();
       }
-    } catch (error) {
-      this._notifyError(description, error);
-      this._log(`Action failed: ${description} -> ${error?.message ?? error}`);
-    } finally {
-      this._setBusy(false);
-      this._syncState().catch(error => {
-        this._log(`State sync failed: ${error?.message ?? error}`);
-      });
     }
-  }
 
-  _setBusy(isBusy) {
-    this._busy = isBusy;
-  }
+    async _startAll() {
+      const parts = [];
+      parts.push(await this._startSystemContainer());
 
-  async _handleToggle() {
-    if (this.checked) {
-      await this._startAll();
-    } else {
-      await this._stopAll();
-    }
-  }
+      const sessionRunning = await this._isSessionRunning();
+      if (sessionRunning) {
+        parts.push('Waydroid session is already running');
+        return parts.filter(Boolean).join('; ');
+      }
 
-  async _startAll() {
-    const parts = [];
-    parts.push(await this._startSystemContainer());
+      try {
+        parts.push(await this._startSession());
+      } catch (error) {
+        this._log(`Session start attempt 1 failed: ${error?.message ?? error}`);
+        await new Promise(r => GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 2, () => { r(); return GLib.SOURCE_REMOVE; }));
+        try {
+          parts.push(await this._startSession());
+        } catch (retryError) {
+          this._log(`Session start attempt 2 failed: ${retryError?.message ?? retryError}`);
+          const runningAfterRetry = await this._isSessionRunning();
+          if (runningAfterRetry) {
+            parts.push('Waydroid session is running');
+          } else {
+            parts.push(`Session start pending: ${retryError?.message ?? retryError}`);
+          }
+        }
+      }
 
-    const sessionRunning = await this._isSessionRunning();
-    if (sessionRunning) {
-      parts.push('Waydroid session is already running');
       return parts.filter(Boolean).join('; ');
     }
 
-    try {
-      parts.push(await this._startSession());
-    } catch (error) {
-      this._log(`Session start attempt 1 failed: ${error?.message ?? error}`);
-      await new Promise(r => GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 2, () => { r(); return GLib.SOURCE_REMOVE; }));
-      try {
-        parts.push(await this._startSession());
-      } catch (retryError) {
-        this._log(`Session start attempt 2 failed: ${retryError?.message ?? retryError}`);
-        const runningAfterRetry = await this._isSessionRunning();
-        if (runningAfterRetry) {
-          parts.push('Waydroid session is running');
-        } else {
-          parts.push(`Session start pending: ${retryError?.message ?? retryError}`);
+    async _stopAll() {
+      const parts = [];
+      parts.push(await this._stopSession());
+      parts.push(await this._stopSystemContainer());
+      return parts.filter(Boolean).join('; ');
+    }
+
+    async _startSystemContainer() {
+      const active = await this._isContainerActive();
+      if (active) {
+        this._log('Container already active; skipping pkexec start');
+        return 'Waydroid system container is already running';
+      }
+      this._log('Invoking pkexec to start system container (detached)');
+      this._notifyInfo('Requesting authentication to start Waydroid container');
+
+      runCommandDetached(['pkexec', 'systemctl', 'start', 'waydroid-container']);
+
+      const timeout = 30;
+      const interval = 2;
+      let waited = 0;
+      while (waited < timeout) {
+        await new Promise(r => GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, interval, () => { r(); return GLib.SOURCE_REMOVE; }));
+        waited += interval;
+        const nowActive = await this._isContainerActive();
+        if (nowActive) {
+          return 'Started Waydroid system container';
         }
       }
+
+      throw new Error('Timed out waiting for waydroid-container to start (polkit prompt may have been dismissed)');
     }
 
-    return parts.filter(Boolean).join('; ');
-  }
-
-  async _stopAll() {
-    const parts = [];
-    parts.push(await this._stopSession());
-    parts.push(await this._stopSystemContainer());
-    return parts.filter(Boolean).join('; ');
-  }
-
-  async _startSystemContainer() {
-    const active = await this._isContainerActive();
-    if (active) {
-      this._log('Container already active; skipping pkexec start');
-      return 'Waydroid system container is already running';
-    }
-    this._log('Invoking pkexec to start system container (detached)');
-    this._notifyInfo('Requesting authentication to start Waydroid container');
-
-    // Spawn pkexec detached so we don't block the UI; then poll status.
-    runCommandDetached(['pkexec', 'systemctl', 'start', 'waydroid-container']);
-
-    // Wait for the container to appear active (poll), but avoid hanging forever.
-    const timeout = 30; // seconds
-    const interval = 2; // seconds
-    let waited = 0;
-    while (waited < timeout) {
-      await new Promise(r => GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, interval, () => { r(); return GLib.SOURCE_REMOVE; }));
-      waited += interval;
-      const nowActive = await this._isContainerActive();
-      if (nowActive) {
-        return 'Started Waydroid system container';
+    async _stopSystemContainer() {
+      const active = await this._isContainerActive();
+      if (!active) {
+        this._log('Container already inactive; skipping pkexec stop');
+        return 'Waydroid system container is already stopped';
       }
-    }
+      this._log('Invoking pkexec to stop system container (detached)');
+      this._notifyInfo('Requesting authentication to stop Waydroid container');
+      runCommandDetached(['pkexec', 'systemctl', 'stop', 'waydroid-container']);
 
-    throw new Error('Timed out waiting for waydroid-container to start (polkit prompt may have been dismissed)');
-  }
-
-  async _stopSystemContainer() {
-    const active = await this._isContainerActive();
-    if (!active) {
-      this._log('Container already inactive; skipping pkexec stop');
-      return 'Waydroid system container is already stopped';
-    }
-    this._log('Invoking pkexec to stop system container (detached)');
-    this._notifyInfo('Requesting authentication to stop Waydroid container');
-    runCommandDetached(['pkexec', 'systemctl', 'stop', 'waydroid-container']);
-
-    const timeout = 30; // seconds
-    const interval = 2; // seconds
-    let waited = 0;
-    while (waited < timeout) {
-      await new Promise(r => GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, interval, () => { r(); return GLib.SOURCE_REMOVE; }));
-      waited += interval;
-      const nowActive = await this._isContainerActive();
-      if (!nowActive) {
-        return 'Stopped Waydroid system container';
-      }
-    }
-
-    throw new Error('Timed out waiting for waydroid-container to stop (polkit prompt may have been dismissed)');
-  }
-
-  async _startSession() {
-    const sessionRunning = await this._isSessionRunning();
-    if (sessionRunning) {
-      return 'Waydroid session is already running';
-    }
-    const containerActive = await this._isContainerActive();
-    if (!containerActive) {
-      throw new Error('System container is inactive. Start it first.');
-    }
-
-    this._log('Starting Waydroid session (detached)');
-    runCommandDetached(['waydroid', 'session', 'start']);
-
-    const timeout = 20; // seconds
-    const interval = 1; // seconds
-    let waited = 0;
-    while (waited < timeout) {
-      await new Promise(r => GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, interval, () => { r(); return GLib.SOURCE_REMOVE; }));
-      waited += interval;
-      const nowRunning = await this._isSessionRunning();
-      if (nowRunning) {
-        return 'Started Waydroid session';
-      }
-    }
-
-    throw new Error('Timed out waiting for Waydroid session to start');
-  }
-
-  async _stopSession() {
-    const sessionRunning = await this._isSessionRunning();
-    if (!sessionRunning) {
-      return 'Waydroid session is already stopped';
-    }
-
-    this._log('Stopping Waydroid session (detached)');
-    runCommandDetached(['waydroid', 'session', 'stop']);
-
-    const timeout = 20; // seconds
-    const interval = 1; // seconds
-    let waited = 0;
-    while (waited < timeout) {
-      await new Promise(r => GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, interval, () => { r(); return GLib.SOURCE_REMOVE; }));
-      waited += interval;
-      const nowRunning = await this._isSessionRunning();
-      if (!nowRunning) {
-        return 'Stopped Waydroid session';
-      }
-    }
-
-    throw new Error('Timed out waiting for Waydroid session to stop');
-  }
-
-  async _applyMode(modeName) {
-    const mode = MODE_PROFILES[modeName];
-    if (!mode) {
-      throw new Error(`Unknown mode: ${modeName}`);
-    }
-
-    const wasSessionRunning = await this._isSessionRunning();
-
-    await this._ensureBinderAvailable();
-
-    await this._runCommand(['waydroid', 'prop', 'set', 'persist.waydroid.width', `${mode.width}`]);
-    await this._runCommand(['waydroid', 'prop', 'set', 'persist.waydroid.height', `${mode.height}`]);
-    await this._runCommand(['waydroid', 'prop', 'set', 'persist.waydroid.dpi', `${mode.dpi}`]);
-
-    const parts = [
-      `Configured ${mode.label} (${mode.width}x${mode.height}@${mode.dpi})`,
-    ];
-
-    if (wasSessionRunning) {
-      this._log(`Mode changed mid-flight; restarting session to apply ${mode.label}`);
-      parts.push(await this._stopSession());
-
-      const containerActive = await this._isContainerActive();
-      if (containerActive) {
-        parts.push(await this._stopSystemContainer());
-        parts.push(await this._startSystemContainer());
+      const timeout = 30;
+      const interval = 2;
+      let waited = 0;
+      while (waited < timeout) {
+        await new Promise(r => GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, interval, () => { r(); return GLib.SOURCE_REMOVE; }));
+        waited += interval;
+        const nowActive = await this._isContainerActive();
+        if (!nowActive) {
+          return 'Stopped Waydroid system container';
+        }
       }
 
-      parts.push(await this._startSession());
-
-      const verified = await this._verifyModeProps(mode);
-      parts[0] = `Configured ${mode.label} (${verified.width}x${verified.height}@${verified.dpi})`;
+      throw new Error('Timed out waiting for waydroid-container to stop (polkit prompt may have been dismissed)');
     }
 
-    return parts.filter(Boolean).join('; ');
-  }
+    async _restartSystemContainer() {
+      this._log('Invoking pkexec to restart system container (detached)');
+      this._notifyInfo('Requesting authentication to restart Waydroid container');
 
-  _parseNumericProp(rawValue, propName) {
-    const match = `${rawValue}`.match(/-?\d+/);
-    if (!match) {
-      throw new Error(`Unable to parse ${propName} value from: ${rawValue}`);
-    }
-    return Number.parseInt(match[0], 10);
-  }
+      runCommandDetached(['pkexec', 'systemctl', 'restart', 'waydroid-container']);
+      await new Promise(r => GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 2, () => { r(); return GLib.SOURCE_REMOVE; }));
 
-  async _verifyModeProps(mode) {
-    const widthRaw = (await this._runCommand(['waydroid', 'prop', 'get', 'persist.waydroid.width'])).stdout;
-    const heightRaw = (await this._runCommand(['waydroid', 'prop', 'get', 'persist.waydroid.height'])).stdout;
-    const dpiRaw = (await this._runCommand(['waydroid', 'prop', 'get', 'persist.waydroid.dpi'])).stdout;
+      const timeout = 40;
+      const interval = 2;
+      let waited = 0;
+      while (waited < timeout) {
+        const nowActive = await this._isContainerActive();
+        if (nowActive) {
+          await new Promise(r => GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 3, () => { r(); return GLib.SOURCE_REMOVE; }));
+          return 'Restarted Waydroid system container';
+        }
+        await new Promise(r => GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, interval, () => { r(); return GLib.SOURCE_REMOVE; }));
+        waited += interval;
+      }
 
-    if (!widthRaw || !heightRaw || !dpiRaw) {
-      throw new Error('Mode verification unavailable while Waydroid session is stopped');
-    }
-
-    const width = this._parseNumericProp(widthRaw, 'persist.waydroid.width');
-    const height = this._parseNumericProp(heightRaw, 'persist.waydroid.height');
-    const dpi = this._parseNumericProp(dpiRaw, 'persist.waydroid.dpi');
-
-    if (width !== mode.width || height !== mode.height || dpi !== mode.dpi) {
-      throw new Error(
-        `Mode verification failed (expected ${mode.width}x${mode.height}@${mode.dpi}, got ${width}x${height}@${dpi})`
-      );
+      throw new Error('Timed out waiting for waydroid-container to restart');
     }
 
-    return { width, height, dpi };
-  }
-
-  async _ensureBinderAvailable() {
-    const hasBinder = GLib.file_test('/dev/anbox-binder', GLib.FileTest.EXISTS) ||
-      GLib.file_test('/dev/binder', GLib.FileTest.EXISTS) ||
-      GLib.file_test('/dev/binderfs', GLib.FileTest.EXISTS);
-
-    if (!hasBinder) {
-      throw new Error('Waydroid binder device is not available (/dev/anbox-binder missing). Start Waydroid/container fully or fix binder support before changing modes.');
-    }
-  }
-
-  async _killAll() {
-    this._log('Executing Kill All (session stop + pkexec stop container)');
-    this._notifyInfo('Killing Waydroid session and requesting authentication to stop container');
-    await this._runCommand(
-      'waydroid session stop && pkexec systemctl stop waydroid-container',
-      { shell: true }
-    );
-    return 'Stopped Waydroid session and system container';
-  }
-
-  async _syncState() {
-    if (this._syncing) {
-      return;
-    }
-    this._syncing = true;
-    try {
+    async _startSession() {
       const sessionRunning = await this._isSessionRunning();
+      if (sessionRunning) {
+        return 'Waydroid session is already running';
+      }
       const containerActive = await this._isContainerActive();
-      const statusText = `Session: ${sessionRunning ? 'running' : 'stopped'} | Container: ${containerActive ? 'active' : 'inactive'}`;
+      if (!containerActive) {
+        throw new Error('System container is inactive. Start it first.');
+      }
 
-      this.menu.setHeader('android-symbolic', 'Waydroid Master Switch', statusText);
+      this._log('Starting Waydroid session (detached)');
+      runCommandDetached(['waydroid', 'session', 'start']);
 
-      this._suppressToggle = true;
-      this.checked = sessionRunning;
-      this._suppressToggle = false;
-    } finally {
-      this._syncing = false;
+      const timeout = 20;
+      const interval = 1;
+      let waited = 0;
+      while (waited < timeout) {
+        await new Promise(r => GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, interval, () => { r(); return GLib.SOURCE_REMOVE; }));
+        waited += interval;
+        const nowRunning = await this._isSessionRunning();
+        if (nowRunning) {
+          return 'Started Waydroid session';
+        }
+      }
+
+      throw new Error('Timed out waiting for Waydroid session to start');
     }
-  }
 
-  async _isSessionRunning() {
-    try {
-      const result = await runCommand(['waydroid', 'status']);
+    async _stopSession() {
+      const sessionRunning = await this._isSessionRunning();
+      if (!sessionRunning) {
+        return 'Waydroid session is already stopped';
+      }
+
+      this._log('Stopping Waydroid session (detached)');
+      runCommandDetached(['waydroid', 'session', 'stop']);
+
+      const timeout = 20;
+      const interval = 1;
+      let waited = 0;
+      while (waited < timeout) {
+        await new Promise(r => GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, interval, () => { r(); return GLib.SOURCE_REMOVE; }));
+        waited += interval;
+        const nowRunning = await this._isSessionRunning();
+        if (!nowRunning) {
+          return 'Stopped Waydroid session';
+        }
+      }
+
+      throw new Error('Timed out waiting for Waydroid session to stop');
+    }
+
+    async _applyMode(modeName) {
+      const mode = MODE_PROFILES[modeName];
+      if (!mode) {
+        throw new Error(`Unknown mode: ${modeName}`);
+      }
+
+      const wasSessionRunning = await this._isSessionRunning();
+      const wasContainerActive = await this._isContainerActive();
+
+      if (!wasContainerActive) {
+        this._log('Container inactive; starting it to set properties');
+        await this._startSystemContainer();
+      }
+
+      await this._ensureBinderAvailable();
+
+      this._log(`Setting properties for ${modeName} mode`);
+      await this._runCommand(['waydroid', 'prop', 'set', 'persist.waydroid.width', `${mode.width}`]);
+      await this._runCommand(['waydroid', 'prop', 'set', 'persist.waydroid.height', `${mode.height}`]);
+      await this._runCommand(['waydroid', 'prop', 'set', 'persist.waydroid.dpi', `${mode.dpi}`]);
+
+      const parts = [
+        `Configured ${mode.label} (${mode.width}x${mode.height}@${mode.dpi})`,
+      ];
+
+      if (wasSessionRunning || wasContainerActive) {
+        this._log('Restarting components to apply mode change');
+
+        if (wasSessionRunning) {
+          parts.push(await this._stopSession());
+        }
+
+        parts.push(await this._restartSystemContainer());
+
+        if (wasSessionRunning) {
+          parts.push(await this._startSession());
+        }
+
+        try {
+          const verified = await this._verifyModeProps(mode);
+          parts[0] = `Applied ${mode.label} (${verified.width}x${verified.height}@${verified.dpi})`;
+        } catch (vError) {
+          this._log(`Verification warning: ${vError.message}`);
+        }
+      }
+
+      return parts.filter(Boolean).join('; ');
+    }
+
+    _parseNumericProp(rawValue, propName) {
+      const match = `${rawValue}`.match(/-?\d+/);
+      if (!match) {
+        throw new Error(`Unable to parse ${propName} value from: ${rawValue}`);
+      }
+      return Number.parseInt(match[0], 10);
+    }
+
+    async _verifyModeProps(mode) {
+      const widthRaw = (await this._runCommand(['waydroid', 'prop', 'get', 'persist.waydroid.width'])).stdout;
+      const heightRaw = (await this._runCommand(['waydroid', 'prop', 'get', 'persist.waydroid.height'])).stdout;
+      const dpiRaw = (await this._runCommand(['waydroid', 'prop', 'get', 'persist.waydroid.dpi'])).stdout;
+
+      if (!widthRaw || !heightRaw || !dpiRaw) {
+        throw new Error('Mode verification unavailable while Waydroid session is stopped');
+      }
+
+      const width = this._parseNumericProp(widthRaw, 'persist.waydroid.width');
+      const height = this._parseNumericProp(heightRaw, 'persist.waydroid.height');
+      const dpi = this._parseNumericProp(dpiRaw, 'persist.waydroid.dpi');
+
+      if (width !== mode.width || height !== mode.height || dpi !== mode.dpi) {
+        throw new Error(
+          `Mode verification failed (expected ${mode.width}x${mode.height}@${mode.dpi}, got ${width}x${height}@${dpi})`
+        );
+      }
+
+      return { width, height, dpi };
+    }
+
+    async _ensureBinderAvailable() {
+      const hasBinder = GLib.file_test('/dev/anbox-binder', GLib.FileTest.EXISTS) ||
+        GLib.file_test('/dev/binder', GLib.FileTest.EXISTS) ||
+        GLib.file_test('/dev/binderfs', GLib.FileTest.EXISTS);
+
+      if (!hasBinder) {
+        throw new Error('Waydroid binder device is not available (/dev/anbox-binder missing). Start Waydroid/container fully or fix binder support before changing modes.');
+      }
+    }
+
+    async _killAll() {
+      this._log('Executing Kill All (session stop + pkexec stop container)');
+      this._notifyInfo('Killing Waydroid session and requesting authentication to stop container');
+      await this._runCommand(
+        'waydroid session stop && pkexec systemctl stop waydroid-container',
+        { shell: true }
+      );
+      return 'Stopped Waydroid session and system container';
+    }
+
+    async _syncState() {
+      if (this._syncing) {
+        return;
+      }
+      this._syncing = true;
+      try {
+        const sessionRunning = await this._isSessionRunning();
+        const containerActive = await this._isContainerActive();
+        const statusText = `Session: ${sessionRunning ? 'running' : 'stopped'} | Container: ${containerActive ? 'active' : 'inactive'}`;
+
+        this.menu.setHeader('android-symbolic', 'Waydroid Master Switch', statusText);
+
+        this._suppressToggle = true;
+        this.checked = sessionRunning;
+        this._suppressToggle = false;
+      } finally {
+        this._syncing = false;
+      }
+    }
+
+    async _isSessionRunning() {
+      try {
+        const result = await runCommand(['waydroid', 'status']);
+        if (result.status !== 0) {
+          return false;
+        }
+
+        const sessionLine = result.stdout
+          .split('\n')
+          .find(line => line.toLowerCase().startsWith('session:'));
+        if (!sessionLine) {
+          return false;
+        }
+
+        return /session:\s*running/i.test(sessionLine);
+      } catch (error) {
+        return false;
+      }
+    }
+
+    async _isContainerActive() {
+      try {
+        const result = await runCommand(['systemctl', 'is-active', 'waydroid-container']);
+        if (result.status !== 0) {
+          return false;
+        }
+        return result.stdout.trim() === 'active';
+      } catch (error) {
+        return false;
+      }
+    }
+
+    async _runCommand(command, options = {}) {
+      const result = await runCommand(command, options);
       if (result.status !== 0) {
-        return false;
+        const message = result.stderr || result.stdout || 'Command failed.';
+        throw new Error(message);
       }
+      return result;
+    }
 
-      const sessionLine = result.stdout
-        .split('\n')
-        .find(line => line.toLowerCase().startsWith('session:'));
-      if (!sessionLine) {
-        return false;
-      }
+    _notifyError(action, error) {
+      const message = error && error.message ? error.message : `${error}`;
+      Main.notify('Waydroid Master Switch', `Failed to ${action}: ${message}`);
+    }
 
-      return /session:\s*running/i.test(sessionLine);
-    } catch (error) {
-      return false;
+    _notifyInfo(message) {
+      Main.notify('Waydroid Master Switch', message);
+    }
+
+    _log(message) {
+      log(`[waydroid-master-switch] ${message}`);
     }
   }
-
-  async _isContainerActive() {
-    try {
-      const result = await runCommand(['systemctl', 'is-active', 'waydroid-container']);
-      if (result.status !== 0) {
-        return false;
-      }
-      return result.stdout.trim() === 'active';
-    } catch (error) {
-      return false;
-    }
-  }
-
-  async _runCommand(command, options = {}) {
-    const result = await runCommand(command, options);
-    if (result.status !== 0) {
-      const message = result.stderr || result.stdout || 'Command failed.';
-      throw new Error(message);
-    }
-    return result;
-  }
-
-  _notifyError(action, error) {
-    const message = error && error.message ? error.message : `${error}`;
-    Main.notify('Waydroid Master Switch', `Failed to ${action}: ${message}`);
-  }
-
-  _notifyInfo(message) {
-    Main.notify('Waydroid Master Switch', message);
-  }
-
-  _log(message) {
-    log(`[waydroid-master-switch] ${message}`);
-  }
-}
 );
 
 export default class WaydroidMasterSwitch extends Extension {
