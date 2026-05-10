@@ -1,9 +1,10 @@
-'use strict';
+import GObject from 'gi://GObject';
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 
-const { GObject, Gio, GLib } = imports.gi;
-const Main = imports.ui.main;
-const QuickSettings = imports.ui.quickSettings;
-const PopupMenu = imports.ui.popupMenu;
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 const MODE_PROFILES = {
   phone: { label: 'Phone Mode', width: 540, height: 960, dpi: 320 },
@@ -279,10 +280,10 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
 let indicator = null;
 let toggle = null;
 
-function init() {
+export function init() {
 }
 
-function enable() {
+export function enable() {
   indicator = new QuickSettings.SystemIndicator();
   toggle = new WaydroidToggle();
 
@@ -290,7 +291,7 @@ function enable() {
   Main.panel.statusArea.quickSettings.addExternalIndicator(indicator);
 }
 
-function disable() {
+export function disable() {
   if (indicator) {
     indicator.destroy();
     indicator = null;
