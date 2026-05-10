@@ -5,6 +5,7 @@ import GLib from 'gi://GLib';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const MODE_PROFILES = {
   phone: { label: 'Phone Mode', width: 540, height: 960, dpi: 320 },
@@ -277,24 +278,20 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
 }
 );
 
-let indicator = null;
-let toggle = null;
+export default class WaydroidMasterSwitch extends Extension {
+  enable() {
+    this._indicator = new QuickSettings.SystemIndicator();
+    this._toggle = new WaydroidToggle();
 
-export function init() {
-}
-
-export function enable() {
-  indicator = new QuickSettings.SystemIndicator();
-  toggle = new WaydroidToggle();
-
-  indicator.quickSettingsItems.push(toggle);
-  Main.panel.statusArea.quickSettings.addExternalIndicator(indicator);
-}
-
-export function disable() {
-  if (indicator) {
-    indicator.destroy();
-    indicator = null;
+    this._indicator.quickSettingsItems.push(this._toggle);
+    Main.panel.statusArea.quickSettings.addExternalIndicator(this._indicator);
   }
-  toggle = null;
+
+  disable() {
+    if (this._indicator) {
+      this._indicator.destroy();
+      this._indicator = null;
+    }
+    this._toggle = null;
+  }
 }
