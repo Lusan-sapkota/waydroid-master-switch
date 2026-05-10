@@ -414,11 +414,19 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
 
   async _isSessionRunning() {
     try {
-      const result = await runCommand(['waydroid', 'session', 'status']);
+      const result = await runCommand(['waydroid', 'status']);
       if (result.status !== 0) {
         return false;
       }
-      return result.stdout.toLowerCase().includes('running');
+
+      const sessionLine = result.stdout
+        .split('\n')
+        .find(line => line.toLowerCase().startsWith('session:'));
+      if (!sessionLine) {
+        return false;
+      }
+
+      return /session:\s*running/i.test(sessionLine);
     } catch (error) {
       return false;
     }
