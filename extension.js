@@ -55,6 +55,14 @@ class WaydroidToggle extends QuickSettings.QuickMenuToggle {
     this._suppressToggle = false;
     this._syncing = false;
 
+    this.menu.addAction('Start All (Container + Session)', () => {
+      this._runAction(() => this._startAll(), 'start all');
+    });
+    this.menu.addAction('Stop All (Session + Container)', () => {
+      this._runAction(() => this._stopAll(), 'stop all');
+    });
+    this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
     this.menu.addAction('Start System Container', () => {
       this._runAction(() => this._startSystemContainer(), 'start system container');
     });
